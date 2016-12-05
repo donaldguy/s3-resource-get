@@ -4,9 +4,9 @@ A simple, interactively usable version of [s3-resource](https://github.com/s3-re
 
 ## Installing / Building
 
-`go get github.com/donaldguy/flight-tracker`
+`go get github.com/donaldguy/s3-resource-get`
 
-or download from [Releases](/releases)
+or download from [Releases](https://github.com/donaldguy/s3-resource-get/releases)
 
 ## Usage
 
