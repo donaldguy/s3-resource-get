@@ -10,13 +10,15 @@ import (
 	"github.com/concourse/fly/rc"
 	"github.com/concourse/go-concourse/concourse"
 	"github.com/concourse/s3-resource"
+	"github.com/concourse/s3-resource/versions"
 
 	flags "github.com/jessevdk/go-flags"
 )
 
 type Options struct {
-	Target   rc.TargetName `short:"t" long:"target" description:"Fly target to monitor" env:"FLIGHT_TRACKER_SERVER"`
+	Target   rc.TargetName `short:"t" long:"target" description:"Fly target to monitor"`
 	FileName string        `short:"o" long:"output" description:"Where to output file. Default is $PWD/<basename of remote file>"`
+	Version  string        `short:"v" long:"artifact-version" description:"Semver of artifact to fetch" default:"latest"`
 }
 
 type S3Source struct {
@@ -32,6 +34,30 @@ func dieIf(err error) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func findVersionPath(team concourse.Team, pipelineName, resourceName, resourceRegexp, version string) string {
+	if version == "latest" {
+		resVers, _, _, err := team.ResourceVersions(pipelineName, resourceName, concourse.Page{Limit: 1})
+		dieIf(err)
+		return resVers[0].Version["path"]
+	}
+	page := &concourse.Page{Limit: 25}
+	for page != nil {
+		resVers, p, _, err := team.ResourceVersions(pipelineName, resourceName, *page)
+		dieIf(err)
+		for _, resVer := range resVers {
+			ver, matched := versions.Extract(resVer.Version["path"], resourceRegexp)
+			if !matched {
+				continue // could just be one old bad version
+			}
+			if ver.VersionNumber == version {
+				return resVer.Version["path"]
+			}
+		}
+		page = p.Next
+	}
+	return ""
 }
 
 func main() {
@@ -98,18 +124,12 @@ func main() {
 		source.UseV2Signing,
 	)
 
-	// TODO: allow grabbing specific version
-	resVers, _, _, err := team.ResourceVersions(pipelineName, resourceName, concourse.Page{Limit: 10})
-	dieIf(err)
-
-	// TODO: support versionIds
-	resPath := resVers[0].Version["path"]
-
 	var localPath string
+	remotePath := findVersionPath(team, pipelineName, resourceName, source.Regexp, opts.Version)
 	if opts.FileName == "" {
 		wd, err := os.Getwd()
 		dieIf(err)
-		name := path.Base(resPath)
+		name := path.Base(remotePath)
 		localPath = path.Join(wd, name)
 		fmt.Printf("Downloading %s\n:", name)
 	} else {
@@ -118,7 +138,7 @@ func main() {
 
 	client.DownloadFile(
 		source.Bucket,
-		resPath,
+		remotePath,
 		"",
 		localPath,
 	)

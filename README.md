@@ -31,6 +31,9 @@ The same things you would pass to `fly`. You can use `fly login` (or copy the re
 #### `-o, --output=` *(optional)*
 A local path to save the file. If not specified will write to current working directory with name matching the basename of the remote file in s3
 
+#### `-v, --version=` *(optional)*
+A specific version to download in semver format, matching against the source.regexp
+
 ## License
 Copyright (C) 2016 Donald Guy, Tulip Interfaces
 
