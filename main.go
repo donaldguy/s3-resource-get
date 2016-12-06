@@ -36,28 +36,31 @@ func dieIf(err error) {
 	}
 }
 
-func findVersionPath(team concourse.Team, pipelineName, resourceName, resourceRegexp, version string) string {
+func findVersionPath(team concourse.Team, pipelineName, resourceName, resourceRegexp, version string) (string, error) {
 	if version == "latest" {
 		resVers, _, _, err := team.ResourceVersions(pipelineName, resourceName, concourse.Page{Limit: 1})
 		dieIf(err)
-		return resVers[0].Version["path"]
+		return resVers[0].Version["path"], nil
 	}
 	page := &concourse.Page{Limit: 25}
 	for page != nil {
 		resVers, p, _, err := team.ResourceVersions(pipelineName, resourceName, *page)
 		dieIf(err)
 		for _, resVer := range resVers {
+			if !resVer.Enabled {
+				continue
+			}
 			ver, matched := versions.Extract(resVer.Version["path"], resourceRegexp)
 			if !matched {
 				continue // could just be one old bad version
 			}
 			if ver.VersionNumber == version {
-				return resVer.Version["path"]
+				return resVer.Version["path"], nil
 			}
 		}
 		page = p.Next
 	}
-	return ""
+	return "", fmt.Errorf("Verion %s not found for %s in %s", version, resourceName, pipelineName)
 }
 
 func main() {
@@ -125,7 +128,9 @@ func main() {
 	)
 
 	var localPath string
-	remotePath := findVersionPath(team, pipelineName, resourceName, source.Regexp, opts.Version)
+	remotePath, err := findVersionPath(team, pipelineName, resourceName, source.Regexp, opts.Version)
+	dieIf(err)
+
 	if opts.FileName == "" {
 		wd, err := os.Getwd()
 		dieIf(err)
@@ -136,10 +141,12 @@ func main() {
 		localPath = opts.FileName
 	}
 
-	client.DownloadFile(
+	err = client.DownloadFile(
 		source.Bucket,
 		remotePath,
 		"",
 		localPath,
 	)
+
+	dieIf(err)
 }
