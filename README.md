@@ -1,6 +1,6 @@
 # s3-resource-get
 
-A simple, interactively usable version of [s3-resource](https://github.com/s3-resource)'s [in](https://github.com/concourse/s3-resource/blob/master/cmd/in/main.go) using a .flyrc target
+A simple, interactively usable version of [s3-resource](https://github.com/concourse/s3-resource)'s [in](https://github.com/concourse/s3-resource/blob/master/cmd/in/main.go) using a .flyrc target
 
 ## Installing / Building
 
